@@ -1,4 +1,7 @@
-
+"""
+rule.py
+Author: Arkadiusz Nowacki
+"""
 class Rule:
 
     def __init__(self, n_columns: int, result: list):
@@ -23,6 +26,8 @@ class Rule:
             return
 
         for iter in range(len(conditions)):
-            if conditions[iter] not in self.conditions[iter] and self.conditions[iter] != ["?"]:
+            if self.conditions[iter] == ["?"] or not self.conditions[iter]:
+                continue
+            if conditions[iter] not in self.conditions[iter]:
                 return False
         return True

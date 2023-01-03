@@ -1,3 +1,8 @@
+"""
+aq.py
+Author: Arkadiusz Nowacki
+"""
+
 import numpy as np
 from pathlib import Path
 import pickle
@@ -13,7 +18,7 @@ class AQ:
     def fit(self, train_x: np.ndarray, train_y: np.ndarray) -> None:
 
         while train_x.shape[0] and train_y.shape[0]: 
-            rule = self.__specialization(train_x=train_x, train_y=train_y) 
+            rule = self.__specialization(train_x=train_x, train_y=train_y)
             self.rules.append(rule) #adding a rule resulting from specialization
 
             covered = []
@@ -24,6 +29,7 @@ class AQ:
             train_x = np.delete(train_x, covered, axis=0) #remove covered complexes
             train_y = np.delete(train_y, covered, axis=0)
 
+
     def __specialization(self, train_x: np.ndarray, train_y: np.ndarray) -> Rule:
 
         pos_krenel_conditions = train_x[0] #choosing a positive kernel
@@ -31,6 +37,7 @@ class AQ:
 
         pos_conditions = train_x[np.where(train_y == pos_kerenl_result)[0]] #creating a list of positive and negative complexes
         neg_conditions = train_x[np.where(train_y != pos_kerenl_result)[0]]
+        neg_conditions_test = copy.deepcopy(neg_conditions)
 
         rules = [Rule(n_columns = len(pos_krenel_conditions), result=pos_kerenl_result)] #initialization of the rule list
 
@@ -42,21 +49,22 @@ class AQ:
                 neg_conditions = np.delete(neg_conditions, 0, axis=0) #it is impossible to perform specialization for the same negative and positive kernel
                 continue
             
-            for _, rule in enumerate(rules):
+            for _, rule in enumerate(copy.deepcopy(rules)):
                 if(rule.cover(neg_condition)): #checking if the rule covers the negative kernel
-                    rules.remove(rule)
+                    r = [item for item in rules if item.conditions == rule.conditions]
+                    del rules[rules.index(r[0])]
                     for idx, value in enumerate(neg_condition):
                         if(pos_krenel_conditions[idx] != value): 
                             new_rule = copy.deepcopy(rule)
-                            if new_rule.conditions[idx] == ["?"]:
+                            if new_rule.conditions[idx] == ["?"] or not new_rule.conditions[idx]:
                                 new_conditions = np.unique(train_x[:, idx]).tolist() #selecting unique values for a column
                                 new_rule.conditions[idx] = new_conditions
                             if value in new_rule.conditions[idx]:
                                 new_rule.conditions[idx].remove(value) #removal of rule found in negative kernel
                             rules.append(new_rule)
-                            
+
             rules = self.__remove_non_general(rules=rules) #remove not general, select top n rule and delete covered complexes
-            rules = self.__top_n(pos=pos_conditions, neg=neg_conditions, rules=rules)
+            rules = self.__top_n(pos=pos_conditions, neg=neg_conditions_test, rules=rules)
             neg_conditions = self.__remove_covered(rules=rules, conditions=neg_conditions)
         
         result = Rule(n_columns=len(rules[0].conditions), result=rules[0].get_reslut()) #get first rule and return as specialization result
@@ -65,12 +73,13 @@ class AQ:
 
     def __remove_covered(self, rules: list, conditions: np.array) -> np.array:
         conditions_list = conditions.tolist()
+        new_conditions = []
         for neg in conditions_list:
             for rule in rules:
-                if(not rule.cover(neg)):
-                    if neg in conditions_list:
-                        conditions_list.remove(neg)
-        return np.array(conditions_list)
+                if(rule.cover(neg)):
+                    new_conditions.append(neg)
+                    break
+        return np.array(new_conditions)
 
     def __remove_non_general(self, rules: list) -> list:
         for _, rule in enumerate(rules):
@@ -81,9 +90,10 @@ class AQ:
                 if any(rule.conditions[idx] == ["?"] and condition != ["?"] for idx, condition in enumerate(rule_rest.conditions)):
                     continue #if rule A has ? and rule B doesn;t, then A is more general
                 for idx, con in enumerate(rule_rest.conditions):
-                    if not all(value in con for value in rule.conditions[idx]): #if rule A has more values than rule B, then A is more general
-                        more_general = True
-                        break
+                    if (con != ['?']):
+                        if not all(value in con for value in rule.conditions[idx]): #if rule A has more values than rule B, then A is more general
+                            more_general = True
+                            break
                 if more_general:
                     continue
                 rules.remove(rule)
@@ -101,19 +111,14 @@ class AQ:
             for single_pos in pos:  #if the rule covers positive complexes, 1 point is added, if not -1
                 if(rule.cover(single_pos)):
                     rule_score += 1
-                else:
-                    rule_score -= 1
-
+            rule_score += len(neg)
             for single_neg in neg: #if the rule not covers negative complexes, 1 point is added, if not -1
                 if(rule.cover(single_neg)):
                     rule_score -= 1
-                else:
-                    rule_score += 1
             scores.append(rule_score)
-
         rules_new = []
         for _ in range(num_top):
-            best_ind = len(scores) - 1 - scores[::-1].index(max(scores)) #selection of the added last, if there are two same values
+            best_ind = scores.index(max(scores))
             rules_new.append(rules[best_ind])
             del scores[best_ind]
             del rules[best_ind]

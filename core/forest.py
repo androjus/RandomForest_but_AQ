@@ -1,3 +1,8 @@
+"""
+aq.py
+Author: Arkadiusz Nowacki
+"""
+
 from core.aq import AQ
 import numpy as np
 from tqdm import tqdm
@@ -10,7 +15,7 @@ class Forest:
     def __create_forest_AQ(self, n_tree: int, train_x: np.ndarray, train_y: np.ndarray, percent: float) -> list[AQ]:
         trees = []
         print(f"Starting train AQ")
-        for i in tqdm(range(n_tree)):
+        for _ in tqdm(range(n_tree)):
             tree = AQ()
             idx = np.random.randint(train_x.shape[0], size=int(train_x.shape[0]*percent)) #randomly select a percentage of data from the dataset
             tree.fit(train_x=train_x[idx,:], train_y=train_y[idx,:])
