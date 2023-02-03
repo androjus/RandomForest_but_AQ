@@ -15,7 +15,9 @@ class AQ:
     def __init__(self):
         self.rules = []
 
-    def fit(self, train_x: np.ndarray, train_y: np.ndarray) -> None:
+    def fit(self, train_x: np.ndarray, train_y: np.ndarray, range: np.ndarray) -> None:
+
+        train_x[:,range] = "[?]"
 
         while train_x.shape[0] and train_y.shape[0]: 
             rule = self.__specialization(train_x=train_x, train_y=train_y)
